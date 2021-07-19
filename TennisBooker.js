@@ -15,10 +15,14 @@ async function TennisBooker(hr, email, pwd) {
   var builder = new webdriver.Builder().forBrowser("firefox");
   builder.setFirefoxOptions(options);
   driver = builder.build();
-
   await driver.get("https://edenbridgetennis.com/courtbooking/courts");
 
-  await Login(driver, email, pwd);
+  // Full Screen
+  //await driver.switchTo().activeElement().sendKeys(Key.F11);
+
+  await driver.manage().window().fullscreen();
+
+  //await Login(driver, email, pwd);
 
   // Wait for page load
   await Promise.race([
@@ -48,6 +52,10 @@ async function Book(driver, hr) {
     if (nextButton.length != 0) {
       nextButton[0].click();
     }
+    await driver.sleep(2000);
+
+    // Enable this to scroll if screen height is not sufficient
+    //await driver.executeScript("window.scrollBy(0,130)");
 
     let time = await driver.findElement(
       By.xpath(`.//tr[@data-time='${hr}:00']`)
@@ -55,11 +63,11 @@ async function Book(driver, hr) {
 
     let timeCoord = await time.getRect();
     const timeYCoord = await timeCoord.y;
-    const adjustedTimeYCoord = parseInt(timeYCoord) + 5;
-    // console.log(
-    //   "🚀 ~ file: TennisBooker.js ~ line 57 ~ Book ~ timeYCoord",
-    //   timeYCoord
-    // );
+    const adjustedTimeYCoord = parseInt(timeYCoord) + 10;
+    console.log(
+      "🚀 ~ file: TennisBooker.js ~ line 57 ~ Book ~ timeYCoord",
+      timeYCoord
+    );
     let courts = await driver.findElements(
       By.xpath(
         `//div[@class='fc-scroller fc-time-grid-container']//td[@data-date]`
@@ -68,11 +76,11 @@ async function Book(driver, hr) {
     for (let i = 0; i < courts.length; i++) {
       let courtCoord = await courts[i].getRect();
       const courtXCoord = await courtCoord.x;
-      const adjustedCourtXCoord = parseInt(courtXCoord) + 5;
-      // console.log(
-      //   "🚀 ~ file: TennisBooker.js ~ line 69 ~ Book ~ courtXCoord",
-      //   courtXCoord
-      // );
+      const adjustedCourtXCoord = parseInt(courtXCoord) + 10;
+      console.log(
+        "🚀 ~ file: TennisBooker.js ~ line 69 ~ Book ~ courtXCoord",
+        courtXCoord
+      );
 
       const actions = driver.actions({ async: true });
       // Performs mouse move action onto the element
@@ -83,42 +91,54 @@ async function Book(driver, hr) {
         })
         .press()
         .release()
-        .perform();
-      // .then(() =>
-      //   console.log(
-      //     "courtXCoordinate",
-      //     courtXCoordinate,
-      //     "timeYCoord",
-      //     timeYCoord
-      //   )
-      // );
+        .perform()
+        .then(() =>
+          console.log(
+            "adjustedCourtXCoord",
+            adjustedCourtXCoord,
+            "adjustedTimeYCoord",
+            adjustedTimeYCoord
+          )
+        );
       await driver.sleep(2000);
       let maxRegistrants = await driver.findElements(
         By.xpath(`//select[@name='max_reg']`)
       );
+
+      // If there exists a vacant slot, choose it, the next page that contains maxRegistrants list should be displayed
       if (
-        maxRegistrants.length != 0 &&
+        IsDisplayed(maxRegistrants) &&
         (await maxRegistrants[0].isDisplayed())
       ) {
         await driver.sleep(2000);
         await maxRegistrants[0].click();
-        await maxRegistrants[0]
-          .findElement(By.xpath(`.//option[text()[contains(.,'Solo')]]`))
-          .click();
-        await driver
-          .findElement(
-            By.xpath(
-              `//form[@id='bookcourt_form']//ins[@class="iCheck-helper"]`
-            )
-          )
-          .click();
-        await driver
-          .findElement(
-            By.xpath(`//form[@id='bookcourt_form']//input[@id="submitprivate"]`)
-          )
-          .click();
+        let solo = await getSubElement(
+          maxRegistrants[0],
+          `.//option[text()[contains(.,'Solo')]]`
+        );
+        solo.click();
+        let checkMark = await getElement(
+          driver,
+          `//form[@id='bookcourt_form']//ins[@class="iCheck-helper"]`
+        );
+        checkMark.click();
+        let submit = await getElement(
+          driver,
+          `//form[@id='bookcourt_form']//input[@id="submitprivate"]`
+        );
+        submit.click();
         break;
       }
+    }
+    await driver.sleep(10000);
+
+    let myBooking = await driver.findElements(
+      By.xpath(`.//div[text()[contains(.,'My Booking.')]]`)
+    );
+    if (myBooking.length != 0 && (await myBooking[0].isDisplayed())) {
+      console.log(`Success! you are booked for ${hr}`);
+    } else {
+      throw new Error(`ERROR: My Booking could not be found`);
     }
   } catch (error) {
     console.log("ERROR: ", error);
@@ -133,4 +153,23 @@ async function Login(driver, email, pwd) {
     .click();
 }
 
+async function getElement(driver, xpath) {
+  let webElements = await driver.findElements(By.xpath(xpath));
+  if (webElements.length != 0) {
+    return webElements[0];
+  } else {
+    throw new Error(`ERROR: getElement: Unable to find ${xpath}`);
+  }
+}
+
+async function getSubElement(parentElement, xpath) {
+  return await parentElement.findElement(By.xpath(xpath));
+}
+function IsDisplayed(webElements) {
+  if (webElements.length != 0 && webElements[0].isDisplayed()) {
+    return true;
+  } else {
+    return false;
+  }
+}
 module.exports = TennisBooker;
