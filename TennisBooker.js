@@ -64,23 +64,19 @@ async function Book(driver, hr) {
     let timeCoord = await time.getRect();
     const timeYCoord = await timeCoord.y;
     const adjustedTimeYCoord = parseInt(timeYCoord) + 10;
-    console.log(
-      "🚀 ~ file: TennisBooker.js ~ line 57 ~ Book ~ timeYCoord",
-      timeYCoord
-    );
+
     let courts = await driver.findElements(
       By.xpath(
         `//div[@class='fc-scroller fc-time-grid-container']//td[@data-date]`
       )
     );
-    for (let i = 0; i < courts.length; i++) {
+
+    let bookedCourtNo;
+    // Loop through courts, prioritize court #4 Because it has nets on both sides so balls don't fly away :)
+    for (let i = courts.length - 1; i >= 0; i--) {
       let courtCoord = await courts[i].getRect();
       const courtXCoord = await courtCoord.x;
       const adjustedCourtXCoord = parseInt(courtXCoord) + 10;
-      console.log(
-        "🚀 ~ file: TennisBooker.js ~ line 69 ~ Book ~ courtXCoord",
-        courtXCoord
-      );
 
       const actions = driver.actions({ async: true });
       // Performs mouse move action onto the element
@@ -91,25 +87,22 @@ async function Book(driver, hr) {
         })
         .press()
         .release()
-        .perform()
-        .then(() =>
-          console.log(
-            "adjustedCourtXCoord",
-            adjustedCourtXCoord,
-            "adjustedTimeYCoord",
-            adjustedTimeYCoord
-          )
-        );
+        .perform();
+      // .then(() =>
+      //   console.log(
+      //     "adjustedCourtXCoord",
+      //     adjustedCourtXCoord,
+      //     "adjustedTimeYCoord",
+      //     adjustedTimeYCoord
+      //   )
+      // );
       await driver.sleep(2000);
       let maxRegistrants = await driver.findElements(
         By.xpath(`//select[@name='max_reg']`)
       );
 
       // If there exists a vacant slot, choose it, the next page that contains maxRegistrants list should be displayed
-      if (
-        IsDisplayed(maxRegistrants) &&
-        (await maxRegistrants[0].isDisplayed())
-      ) {
+      if (await IsDisplayed(maxRegistrants)) {
         await driver.sleep(2000);
         await maxRegistrants[0].click();
         let solo = await getSubElement(
@@ -127,6 +120,7 @@ async function Book(driver, hr) {
           `//form[@id='bookcourt_form']//input[@id="submitprivate"]`
         );
         submit.click();
+        bookedCourtNo = i + 1;
         break;
       }
     }
@@ -135,8 +129,10 @@ async function Book(driver, hr) {
     let myBooking = await driver.findElements(
       By.xpath(`.//div[text()[contains(.,'My Booking.')]]`)
     );
-    if (myBooking.length != 0 && (await myBooking[0].isDisplayed())) {
-      console.log(`Success! you are booked for ${hr}`);
+    if (await IsDisplayed(myBooking)) {
+      console.log(
+        `Success! you are booked court number ${bookedCourtNo} for ${hr}`
+      );
     } else {
       throw new Error(`ERROR: My Booking could not be found`);
     }
@@ -165,8 +161,8 @@ async function getElement(driver, xpath) {
 async function getSubElement(parentElement, xpath) {
   return await parentElement.findElement(By.xpath(xpath));
 }
-function IsDisplayed(webElements) {
-  if (webElements.length != 0 && webElements[0].isDisplayed()) {
+async function IsDisplayed(webElements) {
+  if (webElements.length != 0 && (await webElements[0].isDisplayed())) {
     return true;
   } else {
     return false;
