@@ -17,14 +17,14 @@ async function cronCaller() {
     }
   });
 
-  var dt = new Date();
-  // var day = dt.getDate() + 1;
-  // var month = dt.getMonth() + 1;
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  var day = dt.getDate();
-  var month = dt.getMonth() + 1;
+  var day = tomorrow.getDate();
+  var month = tomorrow.getMonth() + 1;
 
-  var cmd = `44 15 ${day} ${month} * cd /Users/naser/Desktop/Projects/TennisBooker && /usr/local/bin/node TennisBookerCLI --hr=${bookingTime} --mail=${mail} --pwd=${pwd}`;
+  var cmd = `01 00 ${day} ${month} * cd /Users/naser/Desktop/Projects/TennisBooker && /usr/local/bin/node TennisBookerCLI --hr=${bookingTime} --mail=${mail} --pwd=${pwd}`;
 
   console.log(cmd);
 
